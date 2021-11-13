@@ -1,7 +1,7 @@
-'''
-Please add your name:
-Please add your matric number: 
-'''
+"""
+Please add your name: Tan Kai Qun, Jeremy
+Please add your matric number: A0136134N
+"""
 
 import os
 import sys
@@ -15,34 +15,39 @@ from mininet.node import RemoteController
 
 net = None
 
-class TreeTopo(Topo):
-			
-	def __init__(self):
-		# Initialize topology
-		Topo.__init__(self)        
-	
-	# You can write other functions as you need.
 
-	# Add hosts
+class TreeTopo(Topo):
+    def __init__(self):
+        # Initialize topology
+        Topo.__init__(self)
+
+    # You can write other functions as you need.
+
+    # Add hosts
     # > self.addHost('h%d' % [HOST NUMBER])
 
-	# Add switches
+    # Add switches
     # > sconfig = {'dpid': "%016x" % [SWITCH NUMBER]}
     # > self.addSwitch('s%d' % [SWITCH NUMBER], **sconfig)
 
-	# Add links
-	# > self.addLink([HOST1], [HOST2])
+    # Add links
+    # > self.addLink([HOST1], [HOST2])
+
 
 def startNetwork():
-    info('** Creating the tree network\n')
+    info("** Creating the tree network\n")
     topo = TreeTopo()
 
     global net
-    net = Mininet(topo=topo, link = Link,
-                  controller=lambda name: RemoteController(name, ip='SERVER IP'),
-                  listenPort=6633, autoSetMacs=True)
+    net = Mininet(
+        topo=topo,
+        link=Link,
+        controller=lambda name: RemoteController(name, ip="SERVER IP"),
+        listenPort=6633,
+        autoSetMacs=True,
+    )
 
-    info('** Starting the network\n')
+    info("** Starting the network\n")
     net.start()
 
     # Create QoS Queues
@@ -52,21 +57,22 @@ def startNetwork():
     #            -- --id=@q1 create queue other-config:min-rate=[X] \
     #            -- --id=@q2 create queue other-config:max-rate=[Y]')
 
-    info('** Running CLI\n')
+    info("** Running CLI\n")
     CLI(net)
+
 
 def stopNetwork():
     if net is not None:
         net.stop()
         # Remove QoS and Queues
-        os.system('sudo ovs-vsctl --all destroy Qos')
-        os.system('sudo ovs-vsctl --all destroy Queue')
+        os.system("sudo ovs-vsctl --all destroy Qos")
+        os.system("sudo ovs-vsctl --all destroy Queue")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Force cleanup on exit by registering a cleanup function
     atexit.register(stopNetwork)
 
     # Tell mininet to print useful information
-    setLogLevel('info')
+    setLogLevel("info")
     startNetwork()

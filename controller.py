@@ -1,6 +1,6 @@
 '''
-Please add your name:
-Please add your matric number: 
+Please add your name: Tan Kai Qun, Jeremy
+Please add your matric number: A0136134N
 '''
 
 import sys
