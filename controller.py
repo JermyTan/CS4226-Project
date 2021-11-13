@@ -3,12 +3,9 @@ Please add your name: Tan Kai Qun, Jeremy
 Please add your matric number: A0136134N
 '''
 
-from struct import pack
-import sys
 import os
 import time
 from collections import defaultdict
-from sets import Set
 
 from pox.core import core
 
@@ -17,16 +14,19 @@ import pox.openflow.discovery
 import pox.openflow.spanning_forest
 
 from pox.lib.revent import *
+from pox.lib.packet import ipv4
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
 
 log = core.getLogger()
+dirname, _ = os.path.split(os.path.abspath(__file__))
 
 TTL = 30  ## in seconds
 NORMAL_TRAFFIC = 0
 PREMIUM_TRAFFIC = 1
 FIREWALL_PRIORITY = 200
 TRANSFER_PRIORITY = 100
+POLICY_INPUT_FILE = os.path.join(dirname, "policy.in")
 
 
 class ForwardTableEntry:
@@ -75,6 +75,26 @@ class Controller(EventMixin):
         core.openflow_discovery.addListeners(self)
 
         self.forward_table = ForwardTable()
+        self.firewall_policies = set()
+        self.premium_traffic_hosts = set()
+
+        self.load_policies()
+    
+    def load_policies(self, policy_file=POLICY_INPUT_FILE):
+        with open(policy_file, mode="r") as f:
+            N, M = map(int, f.readline().split())
+
+            for _ in range(N):
+                policy = tuple(map(str.strip, f.readline().split(",")))
+                
+                if len(policy) < 3:
+                    policy = (None,) + policy
+
+                self.firewall_policies.add(policy)
+
+            for _ in range(M):
+                host = f.readline().strip()
+                self.premium_traffic_hosts.add(host)
 
     def _handle_PacketIn(self, event):
         # install entries to the route table
@@ -127,15 +147,22 @@ class Controller(EventMixin):
         log.debug("Switch %s has come up.", dpid)
 
         # Send the firewall policies to the switch
-        def sendFirewallPolicy(connection, policy):
-            # define your message here
+        def send_firewall_policy(connection, policy):
+            src_ip, dst_ip, dst_port = policy
 
-            # OFPP_NONE: outputting to nowhere
-            # msg.actions.append(of.ofp_action_output(port = of.OFPP_NONE))
-            pass
+            msg = of.ofp_flow_mod()
+            msg.priority = FIREWALL_PRIORITY
+            msg.match.dl_type = 0x800
+            msg.match.nw_proto = ipv4.TCP_PROTOCOL
+            msg.match.nw_dst = IPAddr(addr=dst_ip)
+            msg.match.tp_dst = int(dst_port)
+            if src_ip is not None:
+                msg.match.nw_src = IPAddr(addr=src_ip)
 
-        # for i in [FIREWALL POLICIES]:
-        #     sendFirewallPolicy(event.connection, i)
+            connection.send(msg)
+
+        for policy in self.firewall_policies:
+            send_firewall_policy(connection=event.connection, policy=policy)
 
 
 def launch():

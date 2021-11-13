@@ -4,7 +4,6 @@ Please add your matric number: A0136134N
 """
 
 import os
-import sys
 import atexit
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info
@@ -13,8 +12,9 @@ from mininet.topo import Topo
 from mininet.link import Link
 from mininet.node import RemoteController
 
+dirname, _ = os.path.split(os.path.abspath(__file__))
 
-TOPO_INPUT_FILE = "topology.in"
+TOPO_INPUT_FILE = os.path.join(dirname, "topology.in")
 CONTROLLER_IP = "0.0.0.0"
 CONTROLLER_PORT = 6633
 
@@ -22,8 +22,8 @@ net = None
 
 ## Should be run in python3.8
 class TreeTopo(Topo):
-    def build(self, topo_input_file: str = TOPO_INPUT_FILE):
-        with open(file=topo_input_file, mode="r") as f:
+    def build(self, topo_file: str = TOPO_INPUT_FILE):
+        with open(file=topo_file, mode="r") as f:
             N, M, L = map(int, f.readline().split())
 
             for i in range(1, N + 1):
