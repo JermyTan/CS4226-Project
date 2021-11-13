@@ -15,6 +15,8 @@ from mininet.node import RemoteController
 
 
 TOPO_INPUT_FILE = "topology.in"
+CONTROLLER_IP = "0.0.0.0"
+CONTROLLER_PORT = 6633
 
 net = None
 
@@ -28,7 +30,7 @@ class TreeTopo(Topo):
                 self.addHost(name=f"h{i}")
 
             for i in range(1, M + 1):
-                self.addSwitch(name=f"s{i}")
+                self.addSwitch(name=f"s{i}", dpid="%016x" % i)
 
             for _ in range(L):
                 dev1, dev2, bw = map(str.strip, f.readline().split(","))
@@ -55,8 +57,8 @@ def startNetwork():
     net = Mininet(
         topo=topo,
         link=Link,
-        controller=lambda name: RemoteController(name, ip="SERVER IP"),
-        listenPort=6633,
+        controller=lambda name: RemoteController(name, ip=CONTROLLER_IP),
+        listenPort=CONTROLLER_PORT,
         autoSetMacs=True,
     )
 
