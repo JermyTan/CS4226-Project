@@ -13,13 +13,26 @@ from mininet.topo import Topo
 from mininet.link import Link
 from mininet.node import RemoteController
 
+
+TOPO_INPUT_FILE = "topology.in"
+
 net = None
 
-
+## Should be run in python3.8
 class TreeTopo(Topo):
-    def __init__(self):
-        # Initialize topology
-        Topo.__init__(self)
+    def build(self, topo_input_file: str = TOPO_INPUT_FILE):
+        with open(file=topo_input_file, mode="r") as f:
+            N, M, L = map(int, f.readline().split())
+
+            for i in range(1, N + 1):
+                self.addHost(name=f"h{i}")
+
+            for i in range(1, M + 1):
+                self.addSwitch(name=f"s{i}")
+
+            for _ in range(L):
+                dev1, dev2, bw = map(str.strip, f.readline().split(","))
+                self.addLink(node1=dev1, node2=dev2, bw=int(bw))
 
     # You can write other functions as you need.
 

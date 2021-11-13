@@ -10,6 +10,7 @@ from pox.lib.addresses import IPAddr, EthAddr
 
 log = core.getLogger()
 
+
 class SimpleController(EventMixin):
     def __init__(self):
         self.listenTo(core.openflow)
@@ -24,7 +25,7 @@ class SimpleController(EventMixin):
 
         # ofp_flow_mod: flow table modification
         msg = of.ofp_flow_mod()
-        msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+        msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
         event.connection.send(msg)
 
         # ofp_packet_out: sending packets from the switch, will not modify the flow table
@@ -35,11 +36,11 @@ class SimpleController(EventMixin):
         # event.connection.send(msg)
         log.info("# S%i: Message sent: Outport %i\n", dpid, of.OFPP_FLOOD)
 
-
     def _handle_ConnectionUp(self, event):
         log.info("Switch %s has come up.", dpid_to_str(event.dpid))
 
-def launch ():
+
+def launch():
     # Run discovery and spanning tree modules
     pox.openflow.discovery.launch()
     pox.openflow.spanning_tree.launch()
