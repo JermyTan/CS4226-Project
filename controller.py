@@ -14,7 +14,7 @@ import pox.openflow.discovery
 import pox.openflow.spanning_forest
 
 from pox.lib.revent import *
-from pox.lib.packet import ipv4
+from pox.lib.packet import ipv4, ethernet
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
 
@@ -94,7 +94,7 @@ class Controller(EventMixin):
 
             for _ in range(M):
                 host = f.readline().strip()
-                self.premium_traffic_hosts.add(host)
+                self.premium_traffic_hosts.add(IPAddr(host))
 
     def _handle_PacketIn(self, event):
         # install entries to the route table
@@ -104,10 +104,19 @@ class Controller(EventMixin):
             msg.data = event.ofp
             msg.hard_timeout = TTL
             ## msg.actions.append(of.ofp_action_enqueue(port=out_port, queue_id=q_id))
-            msg.actions.append(of.ofp_action_enqueue(port=out_port))
+            msg.actions.append(of.ofp_action_enqueue(port=out_port, queue_id=q_id))
             msg.priority = TRANSFER_PRIORITY
 
             event.connection.send(msg)
+        
+        def get_dst_ip():
+            if packet.type == ethernet.ARP_TYPE:
+                return packet.payload.protodst
+            
+            if packet.type == ethernet.IP_TYPE:
+                return packet.payload.dstip
+            
+            return None
 
         def forward(message=None):
             message and log.debug(message)
@@ -117,11 +126,10 @@ class Controller(EventMixin):
             out_port = self.forward_table.get_port(dpid=dpid, mac=dst_mac)
 
             if dst_mac.is_multicast or out_port is None:
-                flood()
+                flood(message="Flooding: src_mac: %s | in_port: %i" % (src_mac, in_port))
                 return
             
-            ## TODO: implement different queue
-            q_id = NORMAL_TRAFFIC
+            q_id = PREMIUM_TRAFFIC if get_dst_ip() in self.premium_traffic_hosts else NORMAL_TRAFFIC
             
             install_enqueue(event=event, packet=packet, out_port=out_port, q_id=q_id)
 
@@ -140,7 +148,7 @@ class Controller(EventMixin):
         packet, in_port, dpid = event.parsed, event.port, event.dpid
         src_mac, dst_mac = packet.src, packet.dst
 
-        forward()
+        forward(message="Forward: dpid: %i | src_mac: %s | in_port: %i | dst_mac: %s" % (dpid, src_mac, in_port, dst_mac))
 
     def _handle_ConnectionUp(self, event):
         dpid = dpid_to_str(event.dpid)
@@ -152,7 +160,7 @@ class Controller(EventMixin):
 
             msg = of.ofp_flow_mod()
             msg.priority = FIREWALL_PRIORITY
-            msg.match.dl_type = 0x800
+            msg.match.dl_type = ethernet.IP_TYPE
             msg.match.nw_proto = ipv4.TCP_PROTOCOL
             msg.match.nw_dst = IPAddr(addr=dst_ip)
             msg.match.tp_dst = int(dst_port)
