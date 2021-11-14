@@ -1,7 +1,7 @@
-'''
+"""
 Please add your name: Tan Kai Qun, Jeremy
 Please add your matric number: A0136134N
-'''
+"""
 
 import os
 import time
@@ -50,15 +50,15 @@ class ForwardTable:
             return
 
         del self.table[dpid][mac]
-    
+
     def learn_entry(self, dpid, mac, port):
         self.validate_entry(dpid=dpid, mac=mac)
 
         if mac in self.table[dpid]:
             return
-        
+
         self.table[dpid][mac] = ForwardTableEntry(port=port)
-    
+
     def get_port(self, dpid, mac):
         self.validate_entry(dpid=dpid, mac=mac)
 
@@ -66,8 +66,9 @@ class ForwardTable:
 
         if entry is None:
             return
-        
+
         return entry.port
+
 
 class Controller(EventMixin):
     def __init__(self):
@@ -79,14 +80,14 @@ class Controller(EventMixin):
         self.premium_traffic_hosts = set()
 
         self.load_policies()
-    
+
     def load_policies(self, policy_file=POLICY_INPUT_FILE):
         with open(policy_file, mode="r") as f:
             N, M = map(int, f.readline().split())
 
             for _ in range(N):
                 policy = tuple(map(str.strip, f.readline().split(",")))
-                
+
                 if len(policy) < 3:
                     policy = (None,) + policy
 
@@ -103,19 +104,18 @@ class Controller(EventMixin):
             msg.match = of.ofp_match.from_packet(packet=packet, in_port=in_port)
             msg.data = event.ofp
             msg.hard_timeout = TTL
-            ## msg.actions.append(of.ofp_action_enqueue(port=out_port, queue_id=q_id))
             msg.actions.append(of.ofp_action_enqueue(port=out_port, queue_id=q_id))
             msg.priority = TRANSFER_PRIORITY
 
             event.connection.send(msg)
-        
+
         def get_dst_ip():
             if packet.type == ethernet.ARP_TYPE:
                 return packet.payload.protodst
-            
+
             if packet.type == ethernet.IP_TYPE:
                 return packet.payload.dstip
-            
+
             return None
 
         def forward(message=None):
@@ -126,11 +126,17 @@ class Controller(EventMixin):
             out_port = self.forward_table.get_port(dpid=dpid, mac=dst_mac)
 
             if dst_mac.is_multicast or out_port is None:
-                flood(message="Flooding: src_mac: %s | in_port: %i" % (src_mac, in_port))
+                flood(
+                    message="Flooding: src_mac: %s | in_port: %i" % (src_mac, in_port)
+                )
                 return
-            
-            q_id = PREMIUM_TRAFFIC if get_dst_ip() in self.premium_traffic_hosts else NORMAL_TRAFFIC
-            
+
+            q_id = (
+                PREMIUM_TRAFFIC
+                if get_dst_ip() in self.premium_traffic_hosts
+                else NORMAL_TRAFFIC
+            )
+
             install_enqueue(event=event, packet=packet, out_port=out_port, q_id=q_id)
 
         # When it knows nothing about the destination, flood but don't install the rule
@@ -148,7 +154,10 @@ class Controller(EventMixin):
         packet, in_port, dpid = event.parsed, event.port, event.dpid
         src_mac, dst_mac = packet.src, packet.dst
 
-        forward(message="Forward: dpid: %i | src_mac: %s | in_port: %i | dst_mac: %s" % (dpid, src_mac, in_port, dst_mac))
+        forward(
+            message="Forward: dpid: %i | src_mac: %s | in_port: %i | dst_mac: %s"
+            % (dpid, src_mac, in_port, dst_mac)
+        )
 
     def _handle_ConnectionUp(self, event):
         dpid = dpid_to_str(event.dpid)

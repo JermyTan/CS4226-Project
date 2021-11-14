@@ -5,18 +5,22 @@ Please add your matric number: A0136134N
 
 import os
 import atexit
+
+from typing import Optional
+
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 from mininet.topo import Topo
-from mininet.link import Link
-from mininet.node import RemoteController
+from mininet.link import Link, Intf
+from mininet.node import RemoteController, OVSKernelSwitch
 
 dirname, _ = os.path.split(os.path.abspath(__file__))
 
 TOPO_INPUT_FILE = os.path.join(dirname, "topology.in")
 CONTROLLER_IP = "0.0.0.0"
 CONTROLLER_PORT = 6633
+MEGABITS = 10 ** 6
 
 net = None
 
@@ -65,12 +69,29 @@ def startNetwork():
     info("** Starting the network\n")
     net.start()
 
-    # Create QoS Queues
-    # > os.system('sudo ovs-vsctl -- set Port [INTERFACE] qos=@newqos \
-    #            -- --id=@newqos create QoS type=linux-htb other-config:max-rate=[LINK SPEED] queues=0=@q0,1=@q1,2=@q2 \
-    #            -- --id=@q0 create queue other-config:max-rate=[LINK SPEED] other-config:min-rate=[LINK SPEED] \
-    #            -- --id=@q1 create queue other-config:min-rate=[X] \
-    #            -- --id=@q2 create queue other-config:max-rate=[Y]')
+    ## set up QoS queues
+    switches: set[OVSKernelSwitch] = set(net.switches)
+    for switch in switches:
+        interfaces: list[Intf] = switch.intfList()
+        for interface in interfaces:
+            link: Optional[Link] = interface.link
+            if link is None or (
+                link.intf1.node in switches and link.intf2.node in switches
+            ):
+                continue
+
+            bw = (
+                topo.linkInfo(link.intf1.node.name, link.intf2.node.name).get("bw")
+                * MEGABITS
+            )
+            Y, X = int(bw * 0.5), int(bw * 0.8)
+
+            os.system(
+                f"sudo ovs-vsctl -- set Port {interface.name} qos=@newqos \
+                -- --id=@newqos create QoS type=linux-htb other-config:max-rate={bw} queues=0=@q0,1=@q1 \
+                -- --id=@q0 create queue other-config:max-rate={Y} \
+                -- --id=@q1 create queue other-config:min-rate={X}"
+            )
 
     info("** Running CLI\n")
     CLI(net)
