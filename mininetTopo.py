@@ -21,6 +21,8 @@ TOPO_INPUT_FILE = os.path.join(dirname, "topology.in")
 CONTROLLER_IP = "0.0.0.0"
 CONTROLLER_PORT = 6633
 MEGABITS = 10 ** 6
+Y_FRACT = 0.5
+X_FRACT = 0.8
 
 net = None
 
@@ -39,18 +41,6 @@ class TreeTopo(Topo):
             for _ in range(L):
                 dev1, dev2, bw = map(str.strip, f.readline().split(","))
                 self.addLink(node1=dev1, node2=dev2, bw=int(bw))
-
-    # You can write other functions as you need.
-
-    # Add hosts
-    # > self.addHost('h%d' % [HOST NUMBER])
-
-    # Add switches
-    # > sconfig = {'dpid': "%016x" % [SWITCH NUMBER]}
-    # > self.addSwitch('s%d' % [SWITCH NUMBER], **sconfig)
-
-    # Add links
-    # > self.addLink([HOST1], [HOST2])
 
 
 def startNetwork():
@@ -84,7 +74,7 @@ def startNetwork():
                 topo.linkInfo(link.intf1.node.name, link.intf2.node.name).get("bw")
                 * MEGABITS
             )
-            Y, X = int(bw * 0.5), int(bw * 0.8)
+            Y, X = int(bw * Y_FRACT), int(bw * X_FRACT)
 
             os.system(
                 f"sudo ovs-vsctl -- set Port {interface.name} qos=@newqos \

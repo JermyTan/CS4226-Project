@@ -25,7 +25,7 @@ TTL = 30  ## in seconds
 NORMAL_TRAFFIC = 0
 PREMIUM_TRAFFIC = 1
 FIREWALL_PRIORITY = 200
-TRANSFER_PRIORITY = 100
+FORWARD_PRIORITY = 100
 POLICY_INPUT_FILE = os.path.join(dirname, "policy.in")
 
 
@@ -105,7 +105,7 @@ class Controller(EventMixin):
             msg.data = event.ofp
             msg.hard_timeout = TTL
             msg.actions.append(of.ofp_action_enqueue(port=out_port, queue_id=q_id))
-            msg.priority = TRANSFER_PRIORITY
+            msg.priority = FORWARD_PRIORITY
 
             event.connection.send(msg)
 
